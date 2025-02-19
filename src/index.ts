@@ -5,6 +5,8 @@ import TodoRoutes from "./routes/TodoRoutes";
 import AuthRoutes from "./routes/AuthRoutes";
 import cors from "cors";
 import ExpressMongoSanitize from "express-mongo-sanitize";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 //Création serveur express
 const app = express()
@@ -41,8 +43,40 @@ const connectDB = async () => {
 
 connectDB();
 
+// Middleware de rate limiting
+export const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // ⏳ temps en millisecondes
+    max: 100, // 🔒 Limite à 100 requêtes par IP
+    message: "⛔ Trop de requêtes. Réessayez plus tard."
+});
+
+// Appliquer le rate limiter sur toutes les routes
+app.use(apiLimiter);
+
 // Appliquer express-mongo-sanitize sur les requêtes entrantes
 app.use(ExpressMongoSanitize());
+
+// Activer helmet pour sécuriser les en-têtes HTTP
+app.use(
+    helmet({
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                scriptSrc: ["'self'", "'nonce-random123'"],
+                styleSrc: ["'self'"], // Supprimer 'strict-dynamic'
+                imgSrc: ["'self'"], // Supprimer 'data:'
+                objectSrc: ["'none'"],
+                baseUri: ["'self'"],
+                formAction: ["'self'"],
+                frameAncestors: ["'none'"],
+                scriptSrcAttr: ["'none'"],
+                upgradeInsecureRequests: [],
+            },
+        },
+    })
+);
+
+
 
 //TODO ajouter routes ici
 app.use('/todos', TodoRoutes)
